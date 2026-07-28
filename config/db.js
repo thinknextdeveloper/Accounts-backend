@@ -1,9 +1,19 @@
 const sql = require("mssql/msnodesqlv8");
+require("dotenv").config();
+
+// Active Connection Config using process.env
+const dbServer = process.env.DB_SERVER || "112.196.105.162";
+const dbDatabase = process.env.DB_DATABASE || "DBSmartCampusAsra";
+const dbUser = process.env.DB_USER || "sa";
+const dbPassword = process.env.DB_PASSWORD || "b2y3rt98159(*!%(";
 
 const config = {
-  connectionString:
-    "Driver={ODBC Driver 17 for SQL Server};Server=DESKTOP-Q884IGA;Database=DBSmartCampusAsra;Trusted_Connection=Yes;",
-  //"Driver={ODBC Driver 17 for SQL Server};Server=DESKTOP-UCBVR7F;Database=DBSmartCampusAsra;Trusted_Connection=Yes;",
+  // New Active Connection: Remote SQL Server 112.196.105.162
+  connectionString: `Driver={ODBC Driver 17 for SQL Server};Server=${dbServer};Database=${dbDatabase};Uid=${dbUser};Pwd=${dbPassword};`,
+  
+  // Old Local DB Connections (Commented out):
+  // connectionString: "Driver={ODBC Driver 17 for SQL Server};Server=DESKTOP-Q884IGA;Database=DBSmartCampusAsra;Trusted_Connection=Yes;",
+  // connectionString: "Driver={ODBC Driver 17 for SQL Server};Server=DESKTOP-UCBVR7F;Database=DBSmartCampusAsra;Trusted_Connection=Yes;",
 };
 
 let pool;
@@ -11,7 +21,7 @@ let pool;
 async function connectDB() {
   try {
     pool = await sql.connect(config);
-    console.log("✅ SQL Server Connected");
+    console.log(`✅ SQL Server Connected (${dbServer} -> ${dbDatabase})`);
     return pool;
   } catch (err) {
     console.error("Database Error:", err);
@@ -24,7 +34,7 @@ async function getPool() {
     if (pool) {
       try {
         await pool.close();
-      } catch (e) { }
+      } catch (e) {}
     }
     await connectDB();
   }
