@@ -68,12 +68,11 @@
 // app.listen(PORT, () => {
 //   console.log(`Server running on ${PORT}`);
 // });
-
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
 
-module.exports = { connectDB }
+const { connectDB } = require("./config/db.js");
 const authRoutes = require("./routes/authRoutes");
 const menuRoutes = require("./routes/menuRoutes");
 
