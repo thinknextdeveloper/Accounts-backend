@@ -43,9 +43,6 @@
 
 // module.exports = { sql, connectDB, getPool };
 
-
-
-
 const sql = require("mssql"); // NOT mssql/msnodesqlv8
 require("dotenv").config();
 // Active Connection Config using process.env
@@ -63,6 +60,11 @@ const config = {
   options: {
     encrypt: false, // set true if your server requires TLS; try false first for a plain remote SQL Server
     trustServerCertificate: true,
+  },
+  pool: {
+    max: 5,
+    min: 0,
+    idleTimeoutMillis: 15000, // close idle connections quickly - important for serverless
   },
 };
 
@@ -91,4 +93,32 @@ async function getPool() {
   return pool;
 }
 
-module.exports = { sql, connectDB, getPool };
+/**
+ * Runs a query function against the pool, and if it fails specifically
+ * because the pooled connection was silently closed (common in serverless,
+ * where the function is frozen between invocations), forces a fresh
+ * reconnect and retries once.
+ */
+async function withRetry(queryFn) {
+  let currentPool = await getPool();
+
+  try {
+    return await queryFn(currentPool);
+  } catch (err) {
+    const isConnectionClosed =
+      err?.message === "Connection is closed." ||
+      err?.code === "ECONNCLOSED" ||
+      err?.code === "ENOTOPEN";
+
+    if (!isConnectionClosed) {
+      throw err;
+    }
+
+    console.warn("Connection was closed - reconnecting and retrying once...");
+    pool = null;
+    currentPool = await getPool();
+    return await queryFn(currentPool);
+  }
+}
+
+module.exports = { sql, connectDB, getPool, withRetry };
