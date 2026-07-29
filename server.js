@@ -106,7 +106,7 @@ connectDB();
 // CORS configuration
 app.use(cors({
   origin: [
-    "https://accounts-backend-nine.vercel.app/", // your actual frontend
+    "https://accounts-backend-2atw5o8nw-thinknext.vercel.app/api", // your actual frontend
     // "http://localhost:3000"
   ],
   credentials: true,
