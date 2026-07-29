@@ -114,6 +114,7 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
+
 app.use(express.json());
 
 // Routes
