@@ -106,7 +106,7 @@ connectDB();
 // CORS configuration
 app.use(cors({
   origin: [
-    "https://account-frontend-one.vercel.app",
+    "https://accounts-backend-seven.vercel.app/api/",
     "http://localhost:3000" // or whatever your local frontend port is
   ],
   credentials: true,
