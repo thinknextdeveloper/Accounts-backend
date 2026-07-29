@@ -106,13 +106,15 @@ connectDB();
 // CORS configuration
 app.use(cors({
   origin: [
-    "https://account-frontend-one.vercel.app/api/", // your actual frontend
-    // "http://localhost:3000"
+    "https://account-frontend-one.vercel.app",
+    "http://localhost:3000"
   ],
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
+
+
 
 
 app.use(express.json());
