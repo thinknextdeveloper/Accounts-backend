@@ -30,6 +30,21 @@ const getModesOfPayment = async () => {
 };
 
 /**
+ * Normalizes a "DateTo" value to the very last moment of that calendar
+ * day (23:59:59.997 — the max precision SQL Server DATETIME supports),
+ * so a BETWEEN @DateFrom AND @DateTo range includes every row saved
+ * that day, not just ones saved exactly at midnight.
+ *
+ * Without this, a row saved at e.g. 06:52:00 on the selected day was
+ * being silently excluded because dateTo defaulted to 00:00:00.000.
+ */
+function endOfDay(date) {
+  const d = new Date(date);
+  d.setHours(23, 59, 59, 997);
+  return d;
+}
+
+/**
  * Mirrors VB frmDayBook.Display(): pulls Credit-type Ledger rows within a
  * DayBookDateEntry range, optionally scoped by college / session /
  * ledger name / mode of payment. Returns rows + total credit, matching
@@ -60,7 +75,7 @@ const getDayBookEntries = async (filters) => {
   `;
 
   request.input("DateFrom", sql.DateTime, dateFrom);
-  request.input("DateTo", sql.DateTime, dateTo);
+  request.input("DateTo", sql.DateTime, endOfDay(dateTo));
 
   if (collegeName) {
     query += ` AND CollegeName = @CollegeName`;
@@ -98,12 +113,13 @@ const getDayBookEntries = async (filters) => {
  */
 const getCashVsBankTotals = async (collegeName, dateFrom, dateTo) => {
   const pool = await getPool();
+  const dateToAdjusted = endOfDay(dateTo);
 
   const cashRequest = pool.request();
   cashRequest
     .input("CollegeName", sql.NVarChar, collegeName)
     .input("DateFrom", sql.DateTime, dateFrom)
-    .input("DateTo", sql.DateTime, dateTo);
+    .input("DateTo", sql.DateTime, dateToAdjusted);
   const cashResult = await cashRequest.query(`
     SELECT ISNULL(SUM(Credit), 0) AS Total FROM Ledger
     WHERE CollegeName = @CollegeName AND ModeOfPayment = 'Cash'
@@ -115,7 +131,7 @@ const getCashVsBankTotals = async (collegeName, dateFrom, dateTo) => {
   bankRequest
     .input("CollegeName", sql.NVarChar, collegeName)
     .input("DateFrom", sql.DateTime, dateFrom)
-    .input("DateTo", sql.DateTime, dateTo);
+    .input("DateTo", sql.DateTime, dateToAdjusted);
   const bankResult = await bankRequest.query(`
     SELECT ISNULL(SUM(Credit), 0) AS Total FROM Ledger
     WHERE CollegeName = @CollegeName AND ModeOfPayment <> 'Cash'
@@ -138,7 +154,7 @@ const getLedgerWiseSummary = async (collegeName, dateFrom, dateTo) => {
   request
     .input("CollegeName", sql.NVarChar, collegeName)
     .input("DateFrom", sql.DateTime, dateFrom)
-    .input("DateTo", sql.DateTime, dateTo);
+    .input("DateTo", sql.DateTime, endOfDay(dateTo));
   const result = await request.query(`
     SELECT LedgerName, SUM(Credit) AS Credit
     FROM Ledger
