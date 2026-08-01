@@ -1,10 +1,19 @@
 const { sql, getPool } = require("../config/db");
 
 // Reuses the same MasterCollege table as Cancel Receipt for the College dropdown.
+// const getColleges = async () => {
+//   const pool = await getPool();
+//   const result = await pool.request().query(`
+//     SELECT DISTINCT CollegeName FROM MasterCollege ORDER BY CollegeName
+//   `);
+//   return result.recordset.map((r) => r.CollegeName);
+// };
+
+
 const getColleges = async () => {
   const pool = await getPool();
   const result = await pool.request().query(`
-    SELECT DISTINCT CollegeName FROM MasterCollege ORDER BY CollegeName
+    SELECT DISTINCT CollegeName FROM MasterCourse ORDER BY CollegeName
   `);
   return result.recordset.map((r) => r.CollegeName);
 };
@@ -123,6 +132,62 @@ const listDeadDebits = async ({ collegeName, course, page = 1, pageSize = 20 }) 
  *   DeletedBy NVARCHAR(100) NULL
  * );
  */
+// const deleteDeadDebit = async ({ transactionId, comments, userId }) => {
+//   const pool = await getPool();
+//   const transaction = new sql.Transaction(pool);
+
+//   try {
+//     await transaction.begin();
+
+//     const fetchRequest = transaction.request();
+//     fetchRequest.input("TransactionID", sql.Int, transactionId);
+//     const fetchResult = await fetchRequest.query(`
+//       SELECT * FROM DeadDebits WHERE TransactionID = @TransactionID
+//     `);
+
+//     if (fetchResult.recordset.length === 0) {
+//       await transaction.rollback();
+//       return { success: false, message: "No Record Found" };
+//     }
+
+//     const row = fetchResult.recordset[0];
+
+//     const insertRequest = transaction.request();
+//     insertRequest
+//       .input("TransactionID", sql.Int, row.TransactionID)
+//       .input("DateEntry", sql.DateTime, row.DateEntry ?? null)
+//       .input("CollegeName", sql.NVarChar, row.CollegeName ?? null)
+//       .input("IDNo", sql.BigInt, row.IDNo ?? null)
+//       .input("StudentName", sql.NVarChar, row.StudentName ?? null)
+//       .input("Course", sql.NVarChar, row.Course ?? null)
+//       .input("FatherName", sql.NVarChar, row.FatherName ?? null)
+//       .input("Particulars", sql.NVarChar, row.Particulars ?? null)
+//       .input("Debit", sql.Decimal(18, 2), row.Debit ?? null)
+//       .input("Comments", sql.NVarChar, comments)
+//       .input("DeletedBy", sql.NVarChar, userId || null);
+
+//     await insertRequest.query(`
+//       INSERT INTO DeletedDebits
+//         (TransactionID, DateEntry, CollegeName, IDNo, StudentName, Course, FatherName, Particulars, Debit, Comments, DeletedBy)
+//       VALUES
+//         (@TransactionID, @DateEntry, @CollegeName, @IDNo, @StudentName, @Course, @FatherName, @Particulars, @Debit, @Comments, @DeletedBy)
+//     `);
+
+//     const deleteRequest = transaction.request();
+//     deleteRequest.input("TransactionID", sql.Int, transactionId);
+//     await deleteRequest.query(`
+//       DELETE FROM DeadDebits WHERE TransactionID = @TransactionID
+//     `);
+
+//     await transaction.commit();
+//     return { success: true, message: "Record has been deleted successfully" };
+//   } catch (err) {
+//     await transaction.rollback();
+//     throw err;
+//   }
+// };
+
+
 const deleteDeadDebit = async ({ transactionId, comments, userId }) => {
   const pool = await getPool();
   const transaction = new sql.Transaction(pool);
@@ -133,7 +198,10 @@ const deleteDeadDebit = async ({ transactionId, comments, userId }) => {
     const fetchRequest = transaction.request();
     fetchRequest.input("TransactionID", sql.Int, transactionId);
     const fetchResult = await fetchRequest.query(`
-      SELECT * FROM DeadDebits WHERE TransactionID = @TransactionID
+      SELECT TransactionID
+      FROM Ledger
+      WHERE TransactionID = @TransactionID
+        AND TransactionType = 'Debit'
     `);
 
     if (fetchResult.recordset.length === 0) {
@@ -141,33 +209,12 @@ const deleteDeadDebit = async ({ transactionId, comments, userId }) => {
       return { success: false, message: "No Record Found" };
     }
 
-    const row = fetchResult.recordset[0];
-
-    const insertRequest = transaction.request();
-    insertRequest
-      .input("TransactionID", sql.Int, row.TransactionID)
-      .input("DateEntry", sql.DateTime, row.DateEntry ?? null)
-      .input("CollegeName", sql.NVarChar, row.CollegeName ?? null)
-      .input("IDNo", sql.BigInt, row.IDNo ?? null)
-      .input("StudentName", sql.NVarChar, row.StudentName ?? null)
-      .input("Course", sql.NVarChar, row.Course ?? null)
-      .input("FatherName", sql.NVarChar, row.FatherName ?? null)
-      .input("Particulars", sql.NVarChar, row.Particulars ?? null)
-      .input("Debit", sql.Decimal(18, 2), row.Debit ?? null)
-      .input("Comments", sql.NVarChar, comments)
-      .input("DeletedBy", sql.NVarChar, userId || null);
-
-    await insertRequest.query(`
-      INSERT INTO DeletedDebits
-        (TransactionID, DateEntry, CollegeName, IDNo, StudentName, Course, FatherName, Particulars, Debit, Comments, DeletedBy)
-      VALUES
-        (@TransactionID, @DateEntry, @CollegeName, @IDNo, @StudentName, @Course, @FatherName, @Particulars, @Debit, @Comments, @DeletedBy)
-    `);
-
     const deleteRequest = transaction.request();
     deleteRequest.input("TransactionID", sql.Int, transactionId);
     await deleteRequest.query(`
-      DELETE FROM DeadDebits WHERE TransactionID = @TransactionID
+      DELETE FROM Ledger
+      WHERE TransactionID = @TransactionID
+        AND TransactionType = 'Debit'
     `);
 
     await transaction.commit();
