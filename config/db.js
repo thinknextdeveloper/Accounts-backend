@@ -181,10 +181,10 @@ const sql = require("mssql");
 require("dotenv").config();
 
 // Database Configuration
-const dbServer = process.env.DB_SERVER;
-const dbDatabase = process.env.DB_DATABASE;
-const dbUser = process.env.DB_USER;
-const dbPassword = process.env.DB_PASSWORD;
+const dbServer = process.env.DB_SERVER || "112.196.105.162";
+const dbDatabase = process.env.DB_DATABASE || "DBSmartCampusTest";
+const dbUser = process.env.DB_USER || "sa";
+const dbPassword = process.env.DB_PASSWORD || "b2y3rt98159(*!%(";
 const dbPort = parseInt(process.env.DB_PORT || "1433");
 
 // Display configuration
