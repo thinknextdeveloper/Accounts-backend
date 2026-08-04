@@ -85,7 +85,7 @@ require("dotenv").config();
 
 // Active Connection Config
 const dbServer = "112.196.105.162";
-const dbDatabase = "DBSmartCampusTest";
+const dbDatabase = "";
 const dbUser = "sa";
 const dbPassword = "b2y3rt98159(*!%(";
 
