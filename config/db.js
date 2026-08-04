@@ -80,20 +80,119 @@
 
 // module.exports = { sql, connectDB, getPool, withRetry };
 
+// const sql = require("mssql");
+// require("dotenv").config();
+
+// // Active Connection Config
+// const dbServer = "112.196.105.162";
+// const dbDatabase = "DBSmartCampusTest";
+// const dbUser = "sa";
+// const dbPassword = "b2y3rt98159(*!%(";
+
+// console.log("========== DATABASE CONFIG ==========");
+// console.log("Server   :", dbServer);
+// console.log("Database :", dbDatabase);
+// console.log("User     :", dbUser);
+// console.log("Port     :", 1433);
+// console.log("=====================================");
+
+// const config = {
+//   server: dbServer,
+//   database: dbDatabase,
+//   user: dbUser,
+//   password: dbPassword,
+//   port: 1433,
+//   options: {
+//     encrypt: false,
+//     trustServerCertificate: true,
+//   },
+//   pool: {
+//     max: 5,
+//     min: 0,
+//     idleTimeoutMillis: 15000,
+//   },
+// };
+
+// let pool;
+
+// async function connectDB() {
+//   try {
+//     console.log("Connecting to SQL Server...");
+//     console.log(config);
+
+//     pool = await sql.connect(config);
+
+//     console.log(`✅ SQL Server Connected (${dbServer} -> ${dbDatabase})`);
+
+//     // Verify the actual database after connecting
+//     const result = await pool.request().query(`
+//       SELECT
+//         DB_NAME() AS CurrentDatabase,
+//         @@SERVERNAME AS ServerName
+//     `);
+
+//     console.log("Connected Database:", result.recordset[0]);
+
+//     return pool;
+//   } catch (err) {
+//     console.error("❌ Database Error:", err);
+//     throw err;
+//   }
+// }
+
+// async function getPool() {
+//   if (!pool || !pool.connected) {
+//     console.log("Pool not connected. Creating new connection...");
+//     if (pool) {
+//       try {
+//         await pool.close();
+//       } catch (e) {}
+//     }
+//     await connectDB();
+//   }
+//   return pool;
+// }
+
+// async function withRetry(queryFn) {
+//   let currentPool = await getPool();
+
+//   try {
+//     return await queryFn(currentPool);
+//   } catch (err) {
+//     const isConnectionClosed =
+//       err?.message === "Connection is closed." ||
+//       err?.code === "ECONNCLOSED" ||
+//       err?.code === "ENOTOPEN";
+
+//     if (!isConnectionClosed) {
+//       throw err;
+//     }
+
+//     console.warn("Connection was closed - reconnecting and retrying once...");
+//     pool = null;
+//     currentPool = await getPool();
+//     return await queryFn(currentPool);
+//   }
+// }
+
+// module.exports = { sql, connectDB, getPool, withRetry };
+
 const sql = require("mssql");
 require("dotenv").config();
 
-// Active Connection Config
-const dbServer = "112.196.105.162";
-const dbDatabase = "DBSmartCampusTest";
-const dbUser = "sa";
-const dbPassword = "b2y3rt98159(*!%(";
+// Database Configuration
+const dbServer = process.env.DB_SERVER;
+const dbDatabase = process.env.DB_DATABASE;
+const dbUser = process.env.DB_USER;
+const dbPassword = process.env.DB_PASSWORD;
+const dbPort = parseInt(process.env.DB_PORT || "1433");
 
+// Display configuration
 console.log("========== DATABASE CONFIG ==========");
 console.log("Server   :", dbServer);
 console.log("Database :", dbDatabase);
 console.log("User     :", dbUser);
-console.log("Port     :", 1433);
+console.log("Port     :", dbPort);
 console.log("=====================================");
 
 const config = {
@@ -101,30 +200,33 @@ const config = {
   database: dbDatabase,
   user: dbUser,
   password: dbPassword,
-  port: 1433,
+  port: dbPort,
   options: {
     encrypt: false,
     trustServerCertificate: true,
   },
   pool: {
-    max: 5,
+    max: 10,
     min: 0,
-    idleTimeoutMillis: 15000,
+    idleTimeoutMillis: 30000,
   },
 };
 
-let pool;
+let pool = null;
 
 async function connectDB() {
   try {
-    console.log("Connecting to SQL Server...");
-    console.log(config);
+    if (pool && pool.connected) {
+      return pool;
+    }
 
     pool = await sql.connect(config);
 
-    console.log(`✅ SQL Server Connected (${dbServer} -> ${dbDatabase})`);
+    console.log(
+      `✅ SQL Server Connected (${dbServer} -> ${dbDatabase})`
+    );
 
-    // Verify the actual database after connecting
+    // Verify connected database
     const result = await pool.request().query(`
       SELECT
         DB_NAME() AS CurrentDatabase,
@@ -135,21 +237,24 @@ async function connectDB() {
 
     return pool;
   } catch (err) {
-    console.error("❌ Database Error:", err);
+    console.error("❌ Database Connection Error:", err);
     throw err;
   }
 }
 
 async function getPool() {
   if (!pool || !pool.connected) {
-    console.log("Pool not connected. Creating new connection...");
     if (pool) {
       try {
         await pool.close();
-      } catch (e) {}
+      } catch (err) {
+        console.error("Pool Close Error:", err.message);
+      }
     }
-    await connectDB();
+
+    pool = await connectDB();
   }
+
   return pool;
 }
 
@@ -168,11 +273,25 @@ async function withRetry(queryFn) {
       throw err;
     }
 
-    console.warn("Connection was closed - reconnecting and retrying once...");
+    console.warn("⚠️ Connection closed. Reconnecting...");
+
+    try {
+      if (pool) {
+        await pool.close();
+      }
+    } catch (_) {}
+
     pool = null;
+
     currentPool = await getPool();
+
     return await queryFn(currentPool);
   }
 }
 
-module.exports = { sql, connectDB, getPool, withRetry };
+module.exports = {
+  sql,
+  connectDB,
+  getPool,
+  withRetry,
+};
