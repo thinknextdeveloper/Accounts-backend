@@ -33,17 +33,31 @@ const app = express();
 connectDB();
 
 
-// CORS configuration
-app.use(cors({
-  origin: [
-    "https://account-frontend-one.vercel.app",
-    // "http://localhost:3000"
-  ],
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
-}));
+const allowedOrigins = [
+  "https://account-frontend-one.vercel.app",
+  // "http://localhost:3000",
+];
 
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // Allow requests like Postman or server-to-server
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      console.log("Blocked Origin:", origin);
+      callback(new Error("Not allowed by CORS"));
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+
+app.options("*", cors());
 
 
 
