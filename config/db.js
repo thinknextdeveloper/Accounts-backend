@@ -47,7 +47,7 @@ const sql = require("mssql"); // NOT mssql/msnodesqlv8
 require("dotenv").config();
 // Active Connection Config using process.env
 const dbServer = process.env.DB_SERVER || "112.196.105.162";
-const dbDatabase = process.env.DB_DATABASE || "DBSmartCampusAsra";
+const dbDatabase = process.env.DB_DATABASE || "DBSmartCampusTest";
 const dbUser = process.env.DB_USER || "sa";
 const dbPassword = process.env.DB_PASSWORD || "b2y3rt98159(*!%(";
 
