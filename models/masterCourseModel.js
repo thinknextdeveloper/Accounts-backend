@@ -1,12 +1,12 @@
 const { sql, getPool } = require("../config/db");
-
+const dbName = process.env.DB_DATABASE;
 const getAllColleges = async () => {
   const pool = await getPool();
   const request = pool.request();
 
   const result = await request.query(`
     SELECT DISTINCT [CollegeName]
-    FROM [DBSmartCampusAsra].[dbo].[MasterCourse]
+    FROM [${dbName}].[dbo].[MasterCourse]
     WHERE [CollegeName] IS NOT NULL
     ORDER BY [CollegeName]
   `);
@@ -21,7 +21,7 @@ const getCoursesByCollege = async (collegeName) => {
 
   const result = await request.query(`
     SELECT DISTINCT [Course]
-    FROM [DBSmartCampusAsra].[dbo].[MasterCourse]
+    FROM [${dbName}].[dbo].[MasterCourse]
     WHERE [CollegeName] = @CollegeName
       AND [Course] IS NOT NULL
     ORDER BY [Course]
@@ -36,7 +36,7 @@ const getBatchesByCollegeAndCourse = async (collegeName, course) => {
 
   let query = `
     SELECT DISTINCT [Batch]
-    FROM [DBSmartCampusAsra].[dbo].[MasterCourse]
+    FROM [${dbName}].[dbo].[MasterCourse]
     WHERE [CollegeName] = @CollegeName
       AND [Batch] IS NOT NULL
   `;
@@ -60,7 +60,7 @@ const getSemestersByCollegeCourseBatch = async (collegeName, course, batch) => {
 
   let query = `
     SELECT DISTINCT [Semester], [SemesterID]
-    FROM [DBSmartCampusAsra].[dbo].[MasterCourse]
+    FROM [${dbName}].[dbo].[MasterCourse]
     WHERE [CollegeName] = @CollegeName
       AND [Batch] = @Batch
       AND [Semester] IS NOT NULL
