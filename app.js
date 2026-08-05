@@ -29,6 +29,7 @@ const facilityRoutes = require("./routes/facilityRoutes");
 const concessionRoutes = require("./routes/concessionRoutes");
 const feeReportRoutes = require("./routes/feeReportRoutes");
 const hostelReportRoutes = require("./routes/hostelReportRoutes");
+const debitRoutes = require("./routes/debitRoutes");
 
 
 const app = express();
@@ -80,6 +81,7 @@ app.use("/api/facility", facilityRoutes);
 app.use("/api/concession", concessionRoutes);
 app.use("/api/fee-report", feeReportRoutes);
 app.use("/api/hostel-report", hostelReportRoutes);
+app.use("/api/debit", debitRoutes);
 // Health Check
 app.get("/", (req, res) => {
   res.json({
