@@ -3,7 +3,7 @@ const cors = require("cors");
 require("dotenv").config();
 
 const { connectDB } = require("./config/db");
-
+const debitRoutes = require("./routes/debitRoutes");
 const authRoutes = require("./routes/authRoutes");
 const menuRoutes = require("./routes/menuRoutes");
 const semesterRoutes = require("./routes/semesterRoutes");
@@ -17,6 +17,7 @@ const masterHostelBusValidityRoutes = require("./routes/masterHostelBusValidityR
 const masterSchemeRoutes = require("./routes/masterSchemeRoutes");
 const studentBasicDetailsRoutes = require("./routes/studentBasicDetailsRoutes");
 const feeSingleHeadRoutes = require("./routes/feeSingleHeadRoutes");
+
 const admissionsRoutes = require("./routes/admissionsRoutes");
 const admissionFeeRoutes = require("./routes/admissionFeeRoutes");
 const dayBookRoutes = require("./routes/dayBookRoutes");
@@ -64,7 +65,7 @@ app.use("/api/master-annual-fee", masterAnnualFeeRoutes);
 app.use("/api/master-category", masterCategoryRoutes);
 app.use("/api/master-hostel-bus-validity", masterHostelBusValidityRoutes);
 app.use("/api/master-scheme", masterSchemeRoutes);
-
+app.use("/api/debit", debitRoutes);
 app.use("/api/admissions", admissionsRoutes);
 app.use("/api/admission-fee", admissionFeeRoutes);
 app.use("/api/custom-sub-ledgers", customSubLedgersRoutes);
