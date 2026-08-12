@@ -1,6 +1,6 @@
 
 const { sql, getPool } = require("../config/db");
-
+const dbName = process.env.DB_DATABASE;
 const DISPLAY_COLUMNS = [
   "CollegeName", "Course", "Batch", "Class", "LateralEntry", "AdmissionDate",
   "IDNo", "ClassRollNo", "StudentName", "FatherName", "MotherName", "Sex", "DOB",
@@ -28,6 +28,7 @@ const DISPLAY_COLUMNS = [
 
 const getStudents = async (collegeName, course, batch) => {
   const pool = await getPool();
+  const dbName = process.env.DB_DATABASE;
   const request = pool.request();
   request.input("CollegeName", sql.VarChar(200), collegeName);
 
@@ -35,7 +36,7 @@ const getStudents = async (collegeName, course, batch) => {
 
   let query = `
     SELECT ${selectList}
-    FROM [DBSmartCampusAsra].[dbo].[Admissions]
+    FROM [${dbName}].[dbo].[Admissions]
     WHERE [CollegeName] = @CollegeName
   `;
 
@@ -67,7 +68,7 @@ const updateField = async (idNo, field, value) => {
   request.input("Value", sql.VarChar(100), value);
 
   await request.query(`
-    UPDATE [DBSmartCampusAsra].[dbo].[Admissions]
+    UPDATE [${dbName}].[dbo].[Admissions]
     SET [${field}] = @Value
     WHERE [IDNo] = @IDNo
   `);

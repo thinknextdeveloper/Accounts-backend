@@ -120,8 +120,10 @@ const calcReceiptNo = async (collegeName, ledgerName, session, transaction) => {
       }
     }
     receiptNo = receiptNo + 1;
+    console.log("1111",receiptNo)
   } else {
     receiptNo = receiptNo + 1;
+    console.log("2222",receiptNo)
   }
 
   return receiptNo;
