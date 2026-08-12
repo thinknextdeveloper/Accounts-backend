@@ -37,13 +37,14 @@ const app = express();
 // Middleware
 app.use(cors({
   origin: [
-    // "http://localhost:3000",
-    "https://account-frontend-one.vercel.app"
+    "https://account-frontend-one.vercel.app",
+    // "http://localhost:3000"
   ],
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  allowedHeaders: ["Content-Type", "Authorization"]
 }));
+
 
 app.use(express.json());
 
