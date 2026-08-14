@@ -1,23 +1,22 @@
 const { sql, getPool } = require("../config/db");
 
-async function getStudentById(idNo) {
+const getStudentById = async (idNo) => {
   const pool = await getPool();
   const result = await pool
     .request()
     .input("IDNo", sql.BigInt, idNo)
     .query(`
-      SELECT IDNo, StudentType, CollegeName, StudentName, FatherName, Course,
-             Batch, Class, Session, ClassRollNo, UniRollNo, PermanentAddress,
-             Sex, LateralEntry, Facility, BusRoute, BusFee, Stopage,
-             HostelName, RoomType, HostelCharges, Scheme,
-             FeeCategory AS Category,   -- <-- alias here, once
-             Quota, Snap
-      FROM Admissions
-      WHERE IDNo = @IDNo
+        SELECT
+            IDNo, StudentType, CollegeName, StudentName, FatherName,
+            Course, Batch, Class, Session, ClassRollNo, UniRollNo,
+            PermanentAddress, Sex, LateralEntry, Facility, BusRoute,
+            BusFee, Stopage, HostelName, RoomType, HostelCharges,
+            Scheme, Category, Quota, Snap
+        FROM Admissions
+        WHERE IDNo=@IDNo
     `);
-
-  return result.recordset[0] || null;
-}
+  return result.recordset[0];
+};
 
 const getLedger = async (idNo) => {
   const pool = await getPool();
@@ -121,10 +120,10 @@ const calcReceiptNo = async (collegeName, ledgerName, session, transaction) => {
       }
     }
     receiptNo = receiptNo + 1;
-    console.log("1111", receiptNo)
+    console.log("1111",receiptNo)
   } else {
     receiptNo = receiptNo + 1;
-    console.log("2222", receiptNo)
+    console.log("2222",receiptNo)
   }
 
   return receiptNo;
@@ -351,67 +350,56 @@ const getCurrentSemester = async (collegeName, course, batch) => {
  *   3. Merge the two so the frontend gets {Head, Debit, Credit,
  *      BalanceHeadWise, Concession} per row — exactly what dgvHeads showed.
  */
-
-
 const getFeeStructureWithBalances = async ({
   idNo,
   collegeName,
   course,
   batch,
   semester,
-  category, // varFeeCat / student.Category -> MasterAnnualFee.FeeCategory
+  scheme,
+  category,
+  modeOfAdmission,
   session,
 }) => {
   const pool = await getPool();
-  async function getCategoryId(pool, category, collegeName) {
-    const result = await pool
-      .request()
-      .input("Category", sql.NVarChar, category)
-      .input("CollegeName", sql.NVarChar, collegeName)
-      .query(`
-      SELECT FeeCategoryID
-      FROM MasterFeeCategory
-      WHERE feecategory = @Category AND Collegename = @CollegeName
-    `);
-    return result.recordset[0]?.FeeCategoryID ?? null;
-  }
-  const feeCategoryId = await getCategoryId(pool, category, collegeName);
-  if (feeCategoryId === null) return []; // mirrors VB: category not resolvable -> no fee structure
 
+  // 1. Head list + amount owed (MasterHeads / MasterAnnualFee)
   const headsResult = await pool
     .request()
     .input("CollegeName", sql.NVarChar, collegeName)
     .input("Course", sql.NVarChar, course)
     .input("Batch", sql.Int, batch)
     .input("Semester", sql.NVarChar, semester)
-    .input("FeeCategoryID", sql.Int, feeCategoryId)   // <-- ID, not text
+    .input("Scheme", sql.NVarChar, scheme)
+    .input("Category", sql.NVarChar, category)
+    .input("ModeOfAdmission", sql.NVarChar, modeOfAdmission)
     .query(`
-    SELECT DISTINCT
-           MasterHeads.Head,
-           MasterAnnualFee.Amount AS Credit,
-           MasterAnnualFee.Amount AS Debit,
-           MasterHeads.ID
-    FROM MasterHeads
-    LEFT JOIN MasterAnnualFee
-      ON MasterHeads.CollegeName = MasterAnnualFee.CollegeName
-     AND MasterHeads.Head = MasterAnnualFee.Head
-     AND MasterAnnualFee.CollegeName = @CollegeName
-     AND MasterAnnualFee.Course = @Course
-     AND MasterAnnualFee.Batch = @Batch
-     AND MasterAnnualFee.Semester = @Semester
-     AND MasterAnnualFee.FeeCategory = @FeeCategoryID
-    WHERE MasterHeads.CollegeName = @CollegeName
-    ORDER BY MasterHeads.ID
-  `);
+      SELECT DISTINCT MasterHeads.Head, MasterAnnualFee.Amount AS Debit, MasterHeads.ID
+      FROM MasterHeads
+      LEFT JOIN MasterAnnualFee
+        ON MasterHeads.CollegeName = MasterAnnualFee.CollegeName
+       AND MasterHeads.Head = MasterAnnualFee.Head
+       AND MasterAnnualFee.CollegeName = @CollegeName
+       AND MasterAnnualFee.Course = @Course
+       AND MasterAnnualFee.Batch = @Batch
+       AND MasterAnnualFee.Semester = @Semester
+       AND MasterAnnualFee.Scheme = @Scheme
+       AND MasterAnnualFee.Category = @Category
+       AND MasterAnnualFee.ModeOfAdmission = @ModeOfAdmission
+      WHERE MasterHeads.CollegeName = @CollegeName
+      ORDER BY MasterHeads.ID
+    `);
 
   const heads = headsResult.recordset;
   if (heads.length === 0) return [];
 
+  // 2. Balance already paid per head (VB looped BalanceHeadAmount() per
+  //    row — we do it as a single GROUP BY instead)
   const balanceResult = await pool
     .request()
     .input("CollegeName", sql.NVarChar, collegeName)
     .input("IDNo", sql.BigInt, idNo)
-    .input("Semester", sql.NVarChar, String(semester).trim())
+    .input("Semester", sql.NVarChar, semester)
     .input("Session", sql.NVarChar, session)
     .query(`
       SELECT SubLedgers.SubHead,
@@ -424,7 +412,7 @@ const getFeeStructureWithBalances = async ({
        AND Ledger.LedgerName = SubLedgers.LedgerName
       WHERE SubLedgers.CollegeName = @CollegeName
         AND Ledger.IDNo = @IDNo
-        AND LTRIM(RTRIM(Ledger.Semester)) = @Semester
+        AND Ledger.Semester = @Semester
         AND Ledger.LedgerName = 'Fee'
         AND SubLedgers.Session = @Session
         AND Ledger.ReceiptType = 'Multiple'
@@ -433,13 +421,26 @@ const getFeeStructureWithBalances = async ({
 
   const balanceMap = {};
   for (const row of balanceResult.recordset) {
+    // mirrors VB: varamount = Credit1; if Debit1 exists, varamount = Debit1 - Credit1
     const credit1 = row.Credit1 || 0;
     const debit1 = row.Debit1 || 0;
     balanceMap[row.SubHead] = debit1 > 0 ? debit1 - credit1 : credit1;
   }
 
+  // 3. Merge — mirrors VB's dgvHeads columns: Head, Credit(=balance paid),
+  //    Debit(=amount owed from config), Balance Head-Wise(=same balance)
+  // return heads.map((h) => {
+  //   const balance = balanceMap[h.Head] || 0;
+  //   return {
+  //     Head: h.Head,
+  //     Debit: h.Debit || 0, // amount owed, from MasterAnnualFee config
+  //     Credit: balance, // amount paid so far, from SubLedgers
+  //     BalanceHeadWise: balance,
+  //     Concession: 0, // wire up getconcessionAmount equivalent later if needed
+  //   };
   return heads.map((h) => {
     const balance = Number(balanceMap[h.Head]) || 0;
+
     return {
       Head: h.Head,
       Debit: Number(h.Debit) || 0,
